@@ -35,6 +35,12 @@
     <span style="font-size:11px;color:var(--dim)" id="cipher-idx">0/0</span>
   </div>
   <div id="cipher-msg"></div>
+  <div id="letter-timer"><div id="letter-timer-bar"></div></div>
+  <div id="cipher-note">
+    <span>&#x25B6; Type the <strong>gold-highlighted</strong> letter on your keyboard</span>
+    <span class="note-correct">&#x2714; Correct &rarr; green, +30s pause</span>
+    <span class="note-wrong">&#x2718; Wrong &rarr; red, &minus;45min daylight</span>
+  </div>
 </div>
 
 <div class="panel">
@@ -46,6 +52,7 @@
       <canvas id="plugboard-canvas" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:3"></canvas>
     </div>
   </div>
+  <div id="scramble-notice">PLUGBOARD SCRAMBLED!</div>
   <div class="panel-title">Lampboard</div>
   <div id="lampboard"></div>
   <div class="panel-title">Keyboard</div>
@@ -59,7 +66,7 @@
 
 <div id="tools-row">
   <div class="tool-panel">
-    <div class="panel-title" style="margin-bottom:5px">Bombe — crib attack</div>
+    <div class="panel-title" style="margin-bottom:5px">Bombe — crib attack <span id="bombe-charges" style="color:var(--amber);float:right">Charges: 3</span></div>
     <div class="bombe-row">
       <input type="text" id="bombe-crib" placeholder="crib word e.g. THE" maxlength="20">
       <button id="bombe-run">Run</button>

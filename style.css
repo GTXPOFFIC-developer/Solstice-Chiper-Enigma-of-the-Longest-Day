@@ -53,13 +53,20 @@ body{display:flex;flex-direction:column;align-items:center;padding:16px;backgrou
 #cipher-msg{font-family:var(--font-serif);font-size:22px;letter-spacing:4px;color:var(--gold);word-break:break-all;line-height:1.9;cursor:default}
 .cipher-char{padding:2px 3px;border-radius:3px;transition:all .2s;position:relative}
 .cipher-char.done{color:var(--teal)}
-.cipher-char.active{background:var(--gold);color:var(--bg);box-shadow:0 0 16px var(--gold);animation:breathe 1.2s ease-in-out infinite}
 @keyframes breathe{0%,100%{box-shadow:0 0 8px var(--gold)}50%{box-shadow:0 0 20px var(--gold)}}
+#letter-timer{height:3px;background:var(--gold-dim);border-radius:2px;margin:4px 0;overflow:hidden}
+#letter-timer-bar{height:100%;background:var(--amber);border-radius:2px;width:100%;transition:width .1s linear}
+#letter-timer-bar.timer-danger{background:var(--ember)}
+#cipher-note{display:flex;gap:14px;font-size:11px;color:var(--dim);margin-top:4px;flex-wrap:wrap}
+#cipher-note span{display:inline-flex;align-items:center;gap:3px}
+#cipher-note .note-correct{color:var(--teal)}
+#cipher-note .note-wrong{color:var(--ember)}
 
 /* Rotors */
 .rotor-row{display:flex;gap:32px;flex-wrap:wrap;justify-content:center;margin-bottom:12px;padding:4px 0}
 .rotor-unit{display:flex;flex-direction:column;align-items:center;gap:5px}
-.rotor-unit select{background:#0d1225;color:var(--gold);border:1px solid var(--gold-dim);border-radius:5px;padding:6px 14px;font-family:var(--font-mono);font-size:14px;cursor:pointer;outline:none;appearance:none;text-align:center;min-width:70px}
+.rotor-unit select{background:#0d1225;color:var(--gold);border:1px solid var(--gold-dim);border-radius:5px;padding:6px 14px;font-family:var(--font-mono);font-size:14px;cursor:pointer;outline:none;appearance:none;text-align:center;min-width:70px;text-transform:uppercase}
+.rotor-unit select.rotor-hidden{color:var(--dim);letter-spacing:3px;cursor:default}
 .rotor-unit select:focus{border-color:var(--gold);box-shadow:var(--glow)}
 .rotor-label{color:var(--dim);font-size:11px;text-transform:uppercase;letter-spacing:1.5px}
 .rotor-dials{display:flex;gap:6px;align-items:center}
@@ -74,6 +81,8 @@ body{display:flex;flex-direction:column;align-items:center;padding:16px;backgrou
 .plug-cell.paired{color:#fff;border-width:2px;font-weight:700}
 .plug-cell.paired::after{content:attr(data-partner);display:block;font-size:9px;opacity:0.8;margin-top:1px}
 .plug-cell.drag-over{border-color:var(--amber);box-shadow:0 0 16px var(--amber);background:#2a2040}
+#scramble-notice{text-align:center;font-size:13px;font-weight:700;color:var(--ember);letter-spacing:2px;padding:4px 0;height:0;overflow:hidden;transition:height .3s,opacity .3s;opacity:0}
+#scramble-notice.active{height:24px;opacity:1}
 
 /* Keyboard & Lampboard */
 #keyboard{max-width:640px;margin:0 auto 10px}

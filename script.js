@@ -93,7 +93,8 @@ var DAY_START=4*60+52,DAY_END=23*60+59,WRONG_P=45,PENALTY_RATE=1/2.5;
 var WIRE_COLORS=['#d4a843','#0d9488','#f59e0b','#e11d48','#06b6d4','#84cc16','#a855f7','#f97316','#14b8a6','#e8b83a'];
 var dragSrc=null,dragActive=false,dragMoved=false;
 
-var S={lv:0,m:null,plain:'',cipher:'',source:'',target:'',decoded:[],corrects:[],day:DAY_START,score:0,phase:'intro',storyChars:[],storyIdx:0,typing:false,timerPause:0,mode:'decode'};
+var S={lv:0,m:null,plain:'',cipher:'',source:'',target:'',decoded:[],corrects:[],day:DAY_START,score:0,phase:'intro',storyChars:[],storyIdx:0,typing:false,timerPause:0,mode:'decode',bombeCharges:3,correctStreak:0,started:false};
+var timerInterval=null,timerRemaining=10;
 
 var el={};
 ['story-text','cipher-msg','output-text','rotor-controls','plugboard-grid',
@@ -114,7 +115,12 @@ function initLevel(idx){
   S.m=new EnigmaM();S.m.init(l.order,l.start,[0,0,0],l.pairs);
   S.decoded=[];S.corrects=[];S.day=DAY_START;S.score=S.score||0;
   S.phase='intro';S.storyChars=l.story.split('');S.storyIdx=0;S.typing=true;S.timerPause=0;
+  S.bombeCharges=3;S.correctStreak=0;S.started=false;
+  stopTimer();
   el['btn-next'].disabled=true;
+  el['bombe-run'].disabled=false;
+  var chEl=document.getElementById('bombe-charges');
+  if(chEl)chEl.textContent='Charges: 3';
   el['cipher-msg'].style.display='none';
   el['story-text'].textContent='';
   el['panel-label'].textContent=S.mode==='encode'?'Plaintext — type the highlighted letter to encode':'Ciphertext — type the highlighted letter on your keyboard';
@@ -156,11 +162,9 @@ function renderHUD(){
 function renderRotors(){
   var pos=S.m.getPos(),h='';
   for(var i=0;i<3;i++){
-    var opts='';for(var k in ROTORS){opts+='<option value="'+k+'"'+(k===S.m.order[i]?'selected':'')+'>'+k+'</option>';}
-    h+='<div class="rotor-unit"><div class="rotor-label">Rotor '+(i+1)+'</div><select data-ri="'+i+'">'+opts+'</select><div class="rotor-dials"><button class="rotor-dial-btn" data-dri="'+i+'" data-dir="-1">\u25B2</button><div class="rotor-dial-val">'+pos[i]+'</div><button class="rotor-dial-btn" data-dri="'+i+'" data-dir="1">\u25BC</button></div></div>';
+    h+='<div class="rotor-unit"><div class="rotor-label">Rotor '+(i+1)+'</div><select class="rotor-hidden" disabled><option>???</option></select><div class="rotor-dials"><button class="rotor-dial-btn" data-dri="'+i+'" data-dir="-1">\u25B2</button><div class="rotor-dial-val">'+pos[i]+'</div><button class="rotor-dial-btn" data-dri="'+i+'" data-dir="1">\u25BC</button></div></div>';
   }
   el['rotor-controls'].innerHTML=h;
-  el['rotor-controls'].querySelectorAll('select').forEach(function(s){s.addEventListener('change',onRotor);});
   el['rotor-controls'].querySelectorAll('.rotor-dial-btn').forEach(function(b){b.addEventListener('click',onDial);});
 }
 
@@ -320,7 +324,7 @@ function renderLamps(){
 }
 function renderCipher(){
   var ct=S.source,dc=S.decoded,h='',idx=0;
-  for(var i=0;i<ct.length;i++){var ch=ct[i];if(!A.includes(ch)){h+='<span>'+ch+'</span>';continue;}var done=idx<dc.length,active=idx===dc.length;h+='<span class="cipher-char'+(done?' done':'')+(active?' active':'')+'" data-ci="'+idx+'">'+ch+'</span>';idx++;}
+  for(var i=0;i<ct.length;i++){var ch=ct[i];if(!A.includes(ch)){h+='<span>'+ch+'</span>';continue;}var done=idx<dc.length;h+='<span class="cipher-char'+(done?' done':'')+'" data-ci="'+idx+'">'+ch+'</span>';idx++;}
   el['cipher-msg'].innerHTML=h;
   var tot=S.target.replace(/[^A-Z]/g,'').length,ok=S.corrects.filter(function(b){return b;}).length;
   el['cipher-idx'].textContent=ok+'/'+tot;
@@ -342,11 +346,74 @@ function renderFreq(){
   el['freq-chart'].innerHTML=h;
 }
 
+// ── Per-letter Timer ────────────────────────────────────────────────────────
+function stopTimer(){
+  if(timerInterval){clearInterval(timerInterval);timerInterval=null;}
+  timerRemaining=10;
+  var bar=document.getElementById('letter-timer-bar');
+  if(bar){bar.style.width='100%';bar.classList.remove('timer-danger');}
+}
+function startTimer(){
+  stopTimer();
+  var bar=document.getElementById('letter-timer-bar');
+  if(!bar)return;
+  timerRemaining=10;
+  bar.style.width='100%';
+  bar.classList.remove('timer-danger');
+  var t0=Date.now();
+  timerInterval=setInterval(function(){
+    var elapsed=(Date.now()-t0)/1000;
+    timerRemaining=Math.max(0,10-elapsed);
+    var pct=timerRemaining/10*100;
+    bar.style.width=pct+'%';
+    bar.classList.toggle('timer-danger',timerRemaining<=3);
+    if(timerRemaining<=0){
+      stopTimer();
+      autoWrong();
+    }
+  },100);
+}
+function autoWrong(){
+  if(S.phase!=='playing')return;
+  var target=S.target.replace(/[^A-Z]/g,'');
+  if(S.decoded.length>=target.length)return;
+  var wrongCh=S.m.fwd('A');
+  S.decoded.push(wrongCh);
+  S.corrects.push(false);
+  fail();S.day=Math.min(DAY_END,S.day+WRONG_P);
+  if(S.day>=DAY_END){S.phase='lost';showModal('Daylight Expired','The sun has set. The message remains undecoded. Try again.','Retry');renderAll();return;}
+  renderHUD();renderRotors();updateOutput();renderCipher();
+  click();
+  if(!allComplete())startTimer();
+}
+function allComplete(){
+  var target=S.target.replace(/[^A-Z]/g,'');
+  return S.corrects.length===target.length&&S.corrects.every(function(b){return b;});
+}
+function triggerScramble(){
+  var pairs=[],used={};
+  var count=3+Math.floor(Math.random()*3);
+  while(pairs.length<count){
+    var a=A[Math.floor(Math.random()*26)];
+    if(used[a])continue;
+    var b=A[Math.floor(Math.random()*26)];
+    if(used[b]||a===b)continue;
+    used[a]=1;used[b]=1;
+    pairs.push([a,b]);
+  }
+  S.m.init(S.m.order,S.m.getPos().map(function(c){return A.indexOf(c);}),[0,0,0],pairs);
+  resetDecoded();
+  S.correctStreak=0;
+  var n=document.getElementById('scramble-notice');
+  if(n){n.classList.add('active');setTimeout(function(){n.classList.remove('active');},1200);}
+}
+
 // ── Input Processing ────────────────────────────────────────────────────────
 function decodeChar(cidx){
   if(S.phase!=='playing')return;
   var target=S.target.replace(/[^A-Z]/g,'');
   if(S.decoded.length>=target.length)return;
+  stopTimer();
   var ch=A[cidx];
   var result=S.m.fwd(ch);
   S.decoded.push(result);
@@ -355,7 +422,10 @@ function decodeChar(cidx){
   click();
   if(ok){
     success();S.score+=100;S.timerPause=Date.now()+30000;
+    S.correctStreak++;
+    if(S.correctStreak>=4)triggerScramble();
   }else{
+    S.correctStreak=0;
     fail();S.day=Math.min(DAY_END,S.day+WRONG_P);
     if(S.day>=DAY_END){S.phase='lost';showModal('Daylight Expired','The sun has set. The message remains undecoded. Try again.','Retry');renderAll();return;}
   }
@@ -373,6 +443,8 @@ function decodeChar(cidx){
     S.phase='won';S.score+=500;
     el['btn-next'].disabled=false;
     setTimeout(function(){el['modal-btn'].click();},900);
+  }else if(ok){
+    startTimer();
   }
 }
 
@@ -416,6 +488,7 @@ el['tut-close'].addEventListener('click',closeTutorial);
 
 // ── Bombe ───────────────────────────────────────────────────────────────────
 function runBombe(){
+  if(S.bombeCharges<=0){el['bombe-results'].innerHTML='<span class="fail">No Bombe charges remaining this level.</span>';return;}
   var crib=el['bombe-crib'].value.toUpperCase().replace(/[^A-Z]/g,'');
   if(!crib||crib.length<2){el['bombe-results'].innerHTML='<span class="fail">Enter a crib (\u22652 letters).</span>';return;}
   var ct=S.cipher.replace(/[^A-Z]/g,'');
@@ -443,6 +516,10 @@ function runBombe(){
         }
       }
     }
+    S.bombeCharges--;
+    var chEl=document.getElementById('bombe-charges');
+    if(chEl)chEl.textContent='Charges: '+S.bombeCharges;
+    if(S.bombeCharges<=0){el['bombe-run'].disabled=true;}
     if(res.length)el['bombe-results'].innerHTML=res.map(function(r){return'<div class="hint">pos '+r.pos+' offset '+r.off+'</div>';}).join('');
     else el['bombe-results'].innerHTML='<span class="fail">No match near current position. Try different rotor order or a longer crib.</span>';
   },30);
@@ -470,7 +547,8 @@ function loadLevel(idx){
 function resetDecoded(){
   var l=LEVELS[S.lv];
   S.m=new EnigmaM();S.m.init(l.order,l.start,[0,0,0],l.pairs);
-  S.decoded=[];S.corrects=[];
+  S.decoded=[];S.corrects=[];S.correctStreak=0;
+  stopTimer();
   renderAll();updateOutput();renderCipher();
   drawCanvas();
 }
