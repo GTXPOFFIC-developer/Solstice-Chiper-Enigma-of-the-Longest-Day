@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Solstice Cipher — Enigma of the Longest Day</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="app">
+
+<div id="hud">
+  <svg width="64" height="38" viewBox="0 0 64 38">
+    <path class="daylight-track" d="M 10 32 A 22 22 0 0 1 54 32"/>
+    <path class="daylight-arc" id="daylight-arc" d="M 10 32 A 22 22 0 0 1 54 32" stroke-dasharray="69.12" stroke-dashoffset="0"/>
+    <circle id="sun-orb" cx="12" cy="32" r="5"/>
+  </svg>
+  <div id="hud-info">
+    <div><div class="label">Level</div><div class="value" id="hud-level">1/5</div></div>
+    <div class="hud-sep"></div>
+    <div><div class="label">Daylight</div><div class="value" id="hud-time">04:52</div></div>
+    <div class="hud-sep"></div>
+    <div><div class="label">Score</div><div class="value" id="hud-score">0</div></div>
+    <div class="hud-sep"></div>
+    <div><div class="label" id="hud-progress-label">Decoded</div><div class="value" id="hud-progress">0/0</div></div>
+  </div>
+</div>
+
+<div class="panel"><div id="story-text"></div></div>
+
+<div class="panel">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+    <span class="panel-title" style="margin-bottom:0" id="panel-label">Ciphertext — type the highlighted letter on your keyboard</span>
+    <span style="font-size:11px;color:var(--dim)" id="cipher-idx">0/0</span>
+  </div>
+  <div id="cipher-msg"></div>
+</div>
+
+<div class="panel">
+  <div class="rotor-row" id="rotor-controls"></div>
+  <div style="margin-bottom:8px">
+    <div class="panel-title">Plugboard — drag between two letters to connect</div>
+    <div id="plugboard-wrap" style="position:relative;max-width:640px;margin:0 auto;min-height:60px">
+      <div id="plugboard-grid"></div>
+      <canvas id="plugboard-canvas" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:3"></canvas>
+    </div>
+  </div>
+  <div class="panel-title">Lampboard</div>
+  <div id="lampboard"></div>
+  <div class="panel-title">Keyboard</div>
+  <div id="keyboard"></div>
+</div>
+
+<div class="panel">
+  <div class="panel-title" id="output-label">Decoded Message</div>
+  <div id="output-text"></div>
+</div>
+
+<div id="tools-row">
+  <div class="tool-panel">
+    <div class="panel-title" style="margin-bottom:5px">Bombe — crib attack</div>
+    <div class="bombe-row">
+      <input type="text" id="bombe-crib" placeholder="crib word e.g. THE" maxlength="20">
+      <button id="bombe-run">Run</button>
+    </div>
+    <div id="bombe-results">Enter a crib word and press Run.</div>
+  </div>
+  <div class="tool-panel">
+    <div class="panel-title" style="margin-bottom:5px">Frequency Analysis</div>
+    <div id="freq-chart"></div>
+  </div>
+</div>
+
+<div id="controls">
+  <button id="btn-reset" class="btn-danger">Reset Machine</button>
+  <button id="btn-skip" class="">Skip Story</button>
+  <button id="btn-next" class="btn-primary" disabled>Next Level</button>
+  <button id="btn-tutorial" class="">How to Play</button>
+</div>
+
+</div>
+
+<div id="modal-overlay">
+  <div id="modal-box">
+    <h2 id="modal-title"></h2>
+    <p id="modal-body"></p>
+    <button id="modal-btn">OK</button>
+  </div>
+</div>
+
+<div id="splash-overlay">
+  <div id="splash-box">
+    <h1>SOLSTICE CIPHER</h1>
+    <p class="splash-sub">Enigma of the Longest Day</p>
+    <p class="splash-credit">Produced by <strong>SUDIPTO</strong></p>
+    <p class="splash-prompt">NEVER USED AN ENIGMA BEFORE?</p>
+    <div class="splash-card">
+      <p>Watch this short video to learn the basics:</p>
+      <a class="splash-video" href="https://www.youtube.com/watch?v=ybkkiGtJmkM" target="_blank" rel="noopener">&#x25B6; How the Enigma Machine works</a>
+      <p class="splash-attrib">All credits for the video go to <strong>Jared Owen Animations</strong></p>
+    </div>
+    <button id="splash-begin" class="btn-primary">BEGIN</button>
+  </div>
+</div>
+
+<div id="tut-overlay">
+  <div id="tut-box">
+    <h2>&#x27D0; How to Play &#x27D0;</h2>
+    <div id="tut-steps">
+      <div class="tut-step active" data-tut="0">
+        <p><span class="highlight">Welcome to Solstice Cipher.</span></p>
+        <p>You are a codebreaker in 1944. Encrypted enemy transmissions arrive at your station. Your job: configure the <strong>Enigma machine</strong> to decode each message before the daylight runs out.</p>
+        <p>This tutorial walks you through the controls. Use the <strong>Next</strong> button to advance.</p>
+      </div>
+      <div class="tut-step" data-tut="1">
+        <p><span class="highlight">1. Choose Rotors</span></p>
+        <p>Select three rotors from the dropdowns (I&#x2013;V). Each has different internal wiring. The level tells you which ones to use &#x2014; or experiment to find the right combination.</p>
+        <p>Use the <code>&#x25B2;</code> and <code>&#x25BC;</code> buttons to set each rotor&#x2019;s <strong>starting position</strong> (A&#x2013;Z). This is like the combination lock of the Enigma.</p>
+      </div>
+      <div class="tut-step" data-tut="2">
+        <p><span class="highlight">2. Wire the Plugboard</span></p>
+        <p>The plugboard swaps pairs of letters before and after encoding. <strong>Drag</strong> from one letter to another to connect them with a coloured wire. Click a paired letter to remove its wire.</p>
+        <p>Example: pairing <code>E</code>&#x2194;<code>N</code> means every <span class="keycap">E</span> you type becomes <span class="keycap">N</span> and vice&#x2011;versa inside the machine.</p>
+      </div>
+      <div class="tut-step" data-tut="3">
+        <div class="tut-mode-decode">
+          <p><span class="highlight">3. Decode the Message</span></p>
+          <p>The <strong>ciphertext</strong> is shown at the top. The next letter to decode is <span class="highlight">highlighted in gold</span> and pulsing.</p>
+          <p>Press that same letter on your <span class="keycap">physical keyboard</span> (or click the on&#x2011;screen keyboard). The Enigma steps, the lampboard lights up with the decoded letter, and it appears below.</p>
+          <p><span class="highlight">Correct</span> &#x2192; the letter turns green and the timer pauses 30s. <span class="highlight">Wrong</span> &#x2192; the letter turns red and daylight jumps 45 minutes.</p>
+        </div>
+        <div class="tut-mode-encode" style="display:none">
+          <p><span class="highlight">3. Encode the Message</span></p>
+          <p>The <strong>plaintext</strong> message to encode is shown at the top. The next letter to encode is <span class="highlight">highlighted in gold</span> and pulsing.</p>
+          <p>Press that same letter on your <span class="keycap">physical keyboard</span> (or click the on&#x2011;screen keyboard). The Enigma encrypts it, the lampboard lights up with the encrypted letter, and it appears below.</p>
+          <p><span class="highlight">Correct</span> &#x2192; the encrypted letter matched the expected ciphertext, timer pauses 30s. <span class="highlight">Wrong</span> &#x2192; daylight jumps 45 minutes.</p>
+        </div>
+      </div>
+      <div class="tut-step" data-tut="4">
+        <p><span class="highlight">4. Watch the Daylight</span></p>
+        <p>The HUD shows a <strong>daylight arc</strong> from sunrise (04:52) to midnight (23:59). As time passes, the sun moves across the arc. When the sun reaches the end, the game ends.</p>
+        <p>Time advances automatically, plus wrong guesses add 45 minutes. Decoding correctly pauses the clock for 30 seconds &#x2014; use that breather wisely.</p>
+      </div>
+      <div class="tut-step" data-tut="5">
+        <p><span class="highlight">5. Use Your Tools</span></p>
+        <p><strong>Bombe</strong> &#x2014; type a word you expect in the message (a &#x201C;crib&#x201D; like <code>THE</code>) and press Run. It searches nearby rotor positions for a match.</p>
+        <p><strong>Frequency Analysis</strong> &#x2014; shows how often each letter appears in the ciphertext versus normal English. Useful for spotting substitution patterns.</p>
+      </div>
+      <div class="tut-step" data-tut="6">
+        <p><span class="highlight">Ready, Operator.</span></p>
+        <div class="tut-mode-decode"><p>Configure the Enigma, decode the transmissions, and survive the longest day.</p></div>
+        <div class="tut-mode-encode" style="display:none"><p>Configure the Enigma, encode the transmissions, and survive the longest day.</p></div>
+        <p style="color:var(--gold);text-align:center;margin-top:8px">&#x27D0; Good luck &#x27D0;</p>
+      </div>
+    </div>
+    <div class="tut-nav">
+      <button id="tut-prev" disabled>&#x2190; Back</button>
+      <div class="tut-dots" id="tut-dots"></div>
+      <button id="tut-next">Next &#x2192;</button>
+    </div>
+    <div style="text-align:center;margin-top:10px">
+      <button id="tut-close" style="background:none;border:none;color:var(--dim);cursor:pointer;font-family:var(--font-mono);font-size:12px;padding:4px 12px">Close tutorial</button>
+    </div>
+  </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
